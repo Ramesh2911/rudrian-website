@@ -1,5 +1,5 @@
-import React, { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +7,6 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { Card } from '../components/Card';
 import { Loader } from '../components/Loader';
-import { StatCard } from '../components/StatCard';
 import { getErrorMessage } from '../utils/format';
 import { getCoordinates } from '../utils/location';
 import { submitPunch } from '../net/actions';
@@ -16,7 +15,28 @@ import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 import { colors, gradients, radius, spacing, typography } from '../theme';
 import type { AttendanceToday, RiderStats } from '../types';
-import { formatTime } from '../utils/format';
+import { formatTime, todayIsoDate } from '../utils/format';
+
+const STATUS_CHIP: Record<string, { label: string; fg: string; bg: string }> = {
+  PRESENT: { label: 'Present', fg: colors.success, bg: colors.successBg },
+  LATE: { label: 'Late', fg: colors.warning, bg: colors.warningBg },
+  HALF_DAY: { label: 'Half day', fg: colors.violet, bg: colors.violetBg },
+  ABSENT: { label: 'Absent', fg: colors.danger, bg: colors.dangerBg },
+  LEAVE: { label: 'Leave', fg: colors.muted, bg: colors.border },
+  WEEK_OFF: { label: 'Week off', fg: colors.muted, bg: colors.border },
+};
+
+function formatDuration(ms: number): string {
+  const clamped = Math.max(0, ms);
+  const totalMin = Math.floor(clamped / 60_000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function shortDate(): string {
+  return new Date().toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+}
 
 export function PunchScreen(): React.JSX.Element {
   const insets = useSafeAreaInsets();
@@ -27,6 +47,9 @@ export function PunchScreen(): React.JSX.Element {
   const [stats, setStats] = useState<RiderStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  const pulse = useRef(new Animated.Value(1)).current;
 
   const load = useCallback(async () => {
     try {
@@ -45,6 +68,39 @@ export function PunchScreen(): React.JSX.Element {
       void load();
     }, [load]),
   );
+
+  const onShift = attendance?.action === 'IN';
+
+  useEffect(() => {
+    if (!onShift) {
+      pulse.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 0.3, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [onShift, pulse]);
+
+  useEffect(() => {
+    if (!onShift) return;
+    const id = setInterval(() => setTick((value) => value + 1), 60_000);
+    return () => clearInterval(id);
+  }, [onShift]);
+
+  const workedLabel = useMemo(() => {
+    if (!attendance?.inTime) return '--:--';
+    const start = new Date(attendance.inTime).getTime();
+    if (Number.isNaN(start)) return '--:--';
+    const end = attendance.outTime ? new Date(attendance.outTime).getTime() : Date.now();
+    if (Number.isNaN(end)) return '--:--';
+    return formatDuration(end - start);
+    // tick forces a refresh every minute while on shift.
+  }, [attendance, onShift, tick]);
 
   const onPunch = useCallback(async () => {
     if (punching) return;
@@ -71,8 +127,13 @@ export function PunchScreen(): React.JSX.Element {
     return <Loader fullScreen label="Loading attendance..." />;
   }
 
-  const onShift = attendance?.action === 'IN';
   const punchLabel = onShift ? 'Punch Out' : 'Punch In';
+  const statusText = !attendance
+    ? 'Not punched in'
+    : onShift
+      ? 'On shift'
+      : 'Shift completed';
+  const chip = attendance?.status ? STATUS_CHIP[attendance.status] : undefined;
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + spacing.md }]}>
@@ -80,36 +141,62 @@ export function PunchScreen(): React.JSX.Element {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Attendance</Text>
-        <Text style={styles.subtitle}>
-          {user?.location?.name ? `${user.location.name} · ` : ''}Daily punch in and out
-        </Text>
-
         <LinearGradient
-          colors={gradients.profile}
+          colors={gradients.hero}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
-          <View style={styles.statusRow}>
-            <View>
-              <Text style={styles.heroLabel}>Current status</Text>
-              <Text style={styles.heroStatus}>
-                {!attendance ? 'Not punched in' : onShift ? 'On shift' : 'Shift completed'}
-              </Text>
+          <View pointerEvents="none" style={styles.heroGlowTop} />
+          <View pointerEvents="none" style={styles.heroGlowBottom} />
+
+          <View style={styles.heroTop}>
+            <View style={styles.heroGreet}>
+              <Text style={styles.eyebrow}>ATTENDANCE</Text>
+              <View style={styles.statusLine}>
+                <Animated.View
+                  style={[
+                    styles.liveDot,
+                    { opacity: onShift ? pulse : 1 },
+                    { backgroundColor: onShift ? colors.lime : 'rgba(255,255,255,0.35)' },
+                  ]}
+                />
+                <Text style={styles.heroStatus}>{statusText}</Text>
+              </View>
             </View>
-            <View style={[styles.statusDot, { backgroundColor: onShift ? colors.success : colors.white }]} />
+            <View style={styles.dateChip}>
+              <Ionicons name="calendar-outline" size={12} color={colors.lime} />
+              <Text style={styles.dateChipText}>{shortDate()}</Text>
+            </View>
           </View>
 
-          <View style={styles.timeRow}>
+          <View style={styles.metaRow}>
+            {chip ? (
+              <View style={[styles.statusChip, { backgroundColor: chip.bg }]}>
+                <Text style={[styles.statusChipText, { color: chip.fg }]}>{chip.label}</Text>
+              </View>
+            ) : null}
+            {user?.location?.name ? (
+              <Text style={styles.metaText} numberOfLines={1}>
+                {user.location.name}
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={styles.timeCard}>
             <View style={styles.timeCell}>
-              <Text style={styles.timeLabel}>In</Text>
+              <Text style={styles.timeLabel}>IN</Text>
               <Text style={styles.timeValue}>{formatTime(attendance?.inTime)}</Text>
             </View>
             <View style={styles.timeDivider} />
             <View style={styles.timeCell}>
-              <Text style={styles.timeLabel}>Out</Text>
+              <Text style={styles.timeLabel}>OUT</Text>
               <Text style={styles.timeValue}>{formatTime(attendance?.outTime)}</Text>
+            </View>
+            <View style={styles.timeDivider} />
+            <View style={styles.timeCell}>
+              <Text style={styles.timeLabel}>WORKED</Text>
+              <Text style={[styles.timeValue, styles.timeValueLime]}>{workedLabel}</Text>
             </View>
           </View>
 
@@ -121,39 +208,41 @@ export function PunchScreen(): React.JSX.Element {
             accessibilityLabel={punchLabel}
             style={({ pressed }) => [styles.punchBtn, pressed ? styles.pressed : null]}
           >
-            <Ionicons name="finger-print" size={20} color={colors.primary} />
+            <Ionicons name="finger-print" size={20} color={colors.petrol} />
             <Text style={styles.punchBtnText}>{punching ? 'Recording...' : punchLabel}</Text>
           </Pressable>
+
+          <View style={styles.statsStrip}>
+            <View style={styles.statCol}>
+              <Text style={styles.statValue}>{stats?.deliveredToday ?? 0}</Text>
+              <Text style={styles.statLabel}>DELIVERED</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCol}>
+              <Text style={styles.statValue}>{stats?.pickedToday ?? 0}</Text>
+              <Text style={styles.statLabel}>PICKED</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCol}>
+              <Text style={styles.statValue}>{stats?.pendingToday ?? 0}</Text>
+              <Text style={styles.statLabel}>PENDING</Text>
+            </View>
+          </View>
         </LinearGradient>
 
-        <View style={styles.statsRow}>
-          <StatCard
-            icon="cube-outline"
-            value={stats?.deliveredToday ?? 0}
-            label="Delivered today"
-            tone="success"
-          />
-          <View style={styles.statSpacer} />
-          <StatCard
-            icon="archive-outline"
-            value={stats?.pickedToday ?? 0}
-            label="Picked today"
-            tone="violet"
-          />
-        </View>
-
         <Card style={styles.weekCard}>
-          <View style={styles.weekRow}>
-            <View style={styles.weekIcon}>
-              <Ionicons name="calendar-outline" size={18} color={colors.primary} />
-            </View>
-            <View style={styles.weekTextWrap}>
-              <Text style={styles.weekTitle}>Completed this week</Text>
-              <Text style={styles.weekSubtitle}>
-                {stats?.completedWeek ?? 0} deliveries and pickups closed
-              </Text>
-            </View>
+          <View style={styles.weekIcon}>
+            <Ionicons name="trophy-outline" size={20} color={colors.petrol} />
+          </View>
+          <View style={styles.weekTextWrap}>
+            <Text style={styles.weekTitle}>Completed this week</Text>
+            <Text style={styles.weekSubtitle}>
+              {stats?.completedWeek ?? 0} deliveries and pickups closed
+            </Text>
+          </View>
+          <View style={styles.weekValueWrap}>
             <Text style={styles.weekValue}>{stats?.completedWeek ?? 0}</Text>
+            <Text style={styles.weekValueLabel}>CLOSED</Text>
           </View>
         </Card>
       </ScrollView>
@@ -170,49 +259,111 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxxl,
   },
-  title: {
-    ...typography.h1,
-  },
-  subtitle: {
-    ...typography.caption,
-    color: colors.muted,
-    marginTop: 2,
-    marginBottom: spacing.lg,
-  },
   hero: {
-    borderRadius: radius.card,
+    borderRadius: 24,
     padding: spacing.xl,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+    shadowColor: '#001E2C',
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
-  statusRow: {
+  heroGlowTop: {
+    position: 'absolute',
+    top: -70,
+    right: -50,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  heroGlowBottom: {
+    position: 'absolute',
+    bottom: -90,
+    left: -60,
+    width: 230,
+    height: 230,
+    borderRadius: 115,
+    backgroundColor: 'rgba(44,201,217,0.18)',
+  },
+  heroTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
-  heroLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.75)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+  heroGreet: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.6,
+    color: colors.lime,
+    marginBottom: 6,
+  },
+  statusLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  liveDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: spacing.sm,
   },
   heroStatus: {
     ...typography.h1,
     color: colors.white,
-    marginTop: 4,
+    fontSize: 26,
+    lineHeight: 32,
   },
-  statusDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    marginTop: spacing.sm,
-  },
-  timeRow: {
+  dateChip: {
     flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.16)',
-    borderRadius: radius.control,
-    padding: spacing.md,
-    marginTop: spacing.xl,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 1,
+    marginTop: 2,
+  },
+  dateChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.lime,
+    marginLeft: spacing.xs,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
+    minHeight: 22,
+  },
+  statusChip: {
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 3,
+    marginRight: spacing.sm,
+  },
+  statusChipText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  metaText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.70)',
+    flex: 1,
+  },
+  timeCard: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: radius.card,
+    paddingVertical: spacing.lg,
+    marginBottom: spacing.lg,
   },
   timeCell: {
     flex: 1,
@@ -220,17 +371,23 @@ const styles = StyleSheet.create({
   },
   timeDivider: {
     width: 1,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   timeLabel: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    color: 'rgba(255,255,255,0.60)',
   },
   timeValue: {
-    ...typography.title,
+    fontSize: 20,
+    fontWeight: '800',
     color: colors.white,
-    marginTop: 2,
+    marginTop: 4,
+    letterSpacing: -0.3,
+  },
+  timeValueLime: {
+    color: colors.lime,
   },
   punchBtn: {
     flexDirection: 'row',
@@ -239,35 +396,63 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: radius.control,
     paddingVertical: spacing.md + 2,
-    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
+    shadowColor: '#001E2C',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
   },
   punchBtnText: {
     fontSize: 15,
     fontWeight: '800',
-    color: colors.primary,
+    color: colors.petrol,
     marginLeft: spacing.sm,
+    letterSpacing: -0.1,
   },
   pressed: {
-    opacity: 0.85,
+    opacity: 0.88,
+    transform: [{ scale: 0.99 }],
   },
-  statsRow: {
-    flexDirection: 'row',
-    marginBottom: spacing.lg,
-  },
-  statSpacer: {
-    width: spacing.md,
-  },
-  weekCard: {
-    marginBottom: spacing.lg,
-  },
-  weekRow: {
+  statsStrip: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderRadius: radius.card,
+    paddingVertical: spacing.lg,
+  },
+  statCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    height: 34,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  statValue: {
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: '800',
+    color: colors.white,
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    color: 'rgba(255,255,255,0.60)',
+    marginTop: 3,
+  },
+  weekCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
   },
   weekIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: colors.primary50,
     alignItems: 'center',
     justifyContent: 'center',
@@ -285,8 +470,21 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginTop: 1,
   },
+  weekValueWrap: {
+    alignItems: 'center',
+  },
   weekValue: {
-    ...typography.h1,
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: '800',
+    color: colors.petrol,
+    letterSpacing: -0.5,
+  },
+  weekValueLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.2,
     color: colors.primary,
+    marginTop: 1,
   },
 });

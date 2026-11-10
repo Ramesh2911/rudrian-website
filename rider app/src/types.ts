@@ -72,6 +72,7 @@ export interface AttendanceToday {
   action: PunchAction;
   inTime: string | null;
   outTime: string | null;
+  status?: string;
 }
 
 export interface RiderStats {
