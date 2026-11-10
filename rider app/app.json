@@ -7,11 +7,6 @@
     "userInterfaceStyle": "light",
     "backgroundColor": "#FFFFFF",
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.rudrianlogistics.rider"
@@ -24,6 +19,14 @@
       }
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./src/assets/wordmark.png",
+          "imageWidth": 300
+        }
+      ],
       [
         "expo-camera",
         {
