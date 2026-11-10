@@ -9,7 +9,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
-import { Header } from '../components/Header';
 import { Loader } from '../components/Loader';
 import { Segmented } from '../components/Segmented';
 import { TaskCard } from '../components/TaskCard';
@@ -338,7 +337,6 @@ export function HistoryScreen(): React.JSX.Element {
   if (loading && !refreshing) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + spacing.md }]}>
-        <Header title="History" subtitle={RANGE_LABEL[range]} />
         <Loader label="Loading history..." />
       </View>
     );
@@ -347,7 +345,6 @@ export function HistoryScreen(): React.JSX.Element {
   if (error) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + spacing.md }]}>
-        <Header title="History" subtitle={RANGE_LABEL[range]} />
         <ErrorState message={error} onRetry={() => { setLoading(true); void load(); }} />
       </View>
     );
@@ -355,15 +352,6 @@ export function HistoryScreen(): React.JSX.Element {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + spacing.md }]}>
-      <Header
-        title="History"
-        subtitle={
-          loading
-            ? RANGE_LABEL[range]
-            : `${stats.total} task${stats.total === 1 ? '' : 's'} · ${RANGE_LABEL[range]}`
-        }
-      />
-
       <FlatList
         testID="history-list"
         data={items}
