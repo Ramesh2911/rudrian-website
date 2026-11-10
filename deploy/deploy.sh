@@ -35,7 +35,34 @@ if [ ! -f server/.env ]; then
   echo "==> server/.env created (DB password + JWT secrets auto-generated)"
 fi
 
-# ---------- 1. Data layer (MySQL + Redis) ----------
+# ---------- 1. Dependencies (builds FIRST — MySQL ke pehle, RAM bachane ke liye) ----------
+echo "==> npm ci (workspaces)"
+npm ci
+
+# ---------- 2. API build ----------
+echo "==> Building API (tsup + prisma generate)"
+npm run db:generate -w server
+npm run build -w server
+
+# ---------- 3. Website build (production URLs) ----------
+export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-https://rudrianlogistics.com/api/v1}"
+export NEXT_PUBLIC_SOCKET_URL="${NEXT_PUBLIC_SOCKET_URL:-https://rudrianlogistics.com}"
+echo "==> Building Website (NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL)"
+NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=3072}" npm run build -w website
+
+# ---------- 4. Main ERP build (production URLs) ----------
+export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://rudrianlogistics.com/api/v1}"
+export VITE_SOCKET_URL="${VITE_SOCKET_URL:-https://rudrianlogistics.com}"
+echo "==> Building Main ERP (VITE_API_BASE_URL=$VITE_API_BASE_URL)"
+npm run build -w erp-web
+
+echo "==> Publishing ERP dist -> /var/www/admin.rudrianlogistics.com"
+mkdir -p /var/www/admin.rudrianlogistics.com
+find /var/www/admin.rudrianlogistics.com -mindepth 1 -delete
+cp -r "Main ERP/dist/." /var/www/admin.rudrianlogistics.com/
+chown -R www-data:www-data /var/www/admin.rudrianlogistics.com || true
+
+# ---------- 5. Data layer (MySQL + Redis) ----------
 echo "==> Starting MySQL + Redis (Docker)"
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env up -d
 
@@ -48,33 +75,6 @@ for i in $(seq 1 60); do
   [ "$i" = 60 ] && { echo "MySQL did not come up in time"; exit 1; }
   sleep 2
 done
-
-# ---------- 2. Dependencies ----------
-echo "==> npm ci (workspaces)"
-npm ci
-
-# ---------- 3. API build ----------
-echo "==> Building API (tsup + prisma generate)"
-npm run db:generate -w server
-npm run build -w server
-
-# ---------- 4. Website build (production URLs) ----------
-export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-https://rudrianlogistics.com/api/v1}"
-export NEXT_PUBLIC_SOCKET_URL="${NEXT_PUBLIC_SOCKET_URL:-https://rudrianlogistics.com}"
-echo "==> Building Website (NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL)"
-NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=3072}" npm run build -w website
-
-# ---------- 5. Main ERP build (production URLs) ----------
-export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://rudrianlogistics.com/api/v1}"
-export VITE_SOCKET_URL="${VITE_SOCKET_URL:-https://rudrianlogistics.com}"
-echo "==> Building Main ERP (VITE_API_BASE_URL=$VITE_API_BASE_URL)"
-npm run build -w erp-web
-
-echo "==> Publishing ERP dist -> /var/www/admin.rudrianlogistics.com"
-mkdir -p /var/www/admin.rudrianlogistics.com
-find /var/www/admin.rudrianlogistics.com -mindepth 1 -delete
-cp -r "Main ERP/dist/." /var/www/admin.rudrianlogistics.com/
-chown -R www-data:www-data /var/www/admin.rudrianlogistics.com || true
 
 # ---------- 6. DB migrate + seed ----------
 echo "==> Prisma migrate deploy"
