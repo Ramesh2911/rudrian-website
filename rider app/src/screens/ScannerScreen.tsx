@@ -201,7 +201,7 @@ export function ScannerScreen(): React.JSX.Element {
           </View>
           <Text style={styles.permissionTitle}>Camera access needed</Text>
           <Text style={styles.permissionBody}>
-            SwiftLogix Rider uses the camera to read parcel barcodes for secure handovers. You can
+            Rudrian Logistics Rider uses the camera to read parcel barcodes for secure handovers. You can
             still enter the AWB manually below.
           </Text>
           {permission?.canAskAgain !== false ? (

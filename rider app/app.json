@@ -1,32 +1,39 @@
 {
   "expo": {
-    "name": "SwiftLogix Rider",
-    "slug": "swiftlogix-rider",
+    "name": "Rudrian Logistics Rider",
+    "slug": "rudrianlogistics-rider",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#F6F8FB",
+    "backgroundColor": "#FFFFFF",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.swiftlogix.rider"
+      "bundleIdentifier": "com.rudrianlogistics.rider"
     },
     "android": {
-      "package": "com.swiftlogix.rider",
+      "package": "com.rudrianlogistics.rider",
       "adaptiveIcon": {
-        "backgroundColor": "#2563EB"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
       }
     },
     "plugins": [
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow SwiftLogix Rider to scan parcel barcodes."
+          "cameraPermission": "Allow Rudrian Logistics Rider to scan parcel barcodes."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow photo capture for Proof of Delivery."
+          "photosPermission": "Allow Rudrian Logistics Rider to capture photos for Proof of Delivery."
         }
       ]
     ]

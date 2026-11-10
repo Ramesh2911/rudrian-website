@@ -3,7 +3,7 @@ import * as SQLite from 'expo-sqlite';
 import { logger } from '../logger';
 import { uid } from '../utils/format';
 
-const DB_NAME = 'swiftlogix_rider.db';
+const DB_NAME = 'rudrian_rider.db';
 
 export interface OutboxRow {
   id: string;

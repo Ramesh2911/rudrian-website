@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -9,7 +10,6 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -77,12 +77,15 @@ export function LoginScreen(_props: Props): React.JSX.Element {
           end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
-          <View style={styles.logoMark}>
-            <Svg width={26} height={26} viewBox="0 0 24 24">
-              <Path d="M13 2 L5 13.6 h5.4 L10 22 l9-12.4 h-6 z" fill={colors.white} />
-            </Svg>
+          <View style={styles.logoPill}>
+            <Image
+              source={require('../assets/wordmark.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+              accessibilityLabel="Rudrian Logistics Solutions logo"
+            />
           </View>
-          <Text style={styles.heroTitle}>SwiftLogix Rider</Text>
+          <Text style={styles.heroTitle}>Rudrian Logistics Rider</Text>
           <Text style={styles.heroSubtitle}>
             Deliveries, pickups and proof of delivery in one place.
           </Text>
@@ -94,7 +97,7 @@ export function LoginScreen(_props: Props): React.JSX.Element {
 
           <Input
             label="Phone or email"
-            placeholder="9876543210 or rider@swiftlogix.app"
+            placeholder="9876543210 or rider@rudrianlogistics.com"
             value={identifier}
             onChangeText={setIdentifier}
             autoCapitalize="none"
@@ -144,7 +147,7 @@ export function LoginScreen(_props: Props): React.JSX.Element {
         </Card>
 
         <Pressable style={styles.footer} accessibilityRole="text">
-          <Text style={styles.footerText}>SwiftLogix Rider v{appVersion}</Text>
+          <Text style={styles.footerText}>Rudrian Logistics Rider v{appVersion}</Text>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -167,14 +170,17 @@ const styles = StyleSheet.create({
     padding: spacing.xxl,
     marginBottom: spacing.xl,
   },
-  logoMark: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
     marginBottom: spacing.lg,
+  },
+  logoImage: {
+    width: 168,
+    height: 76,
   },
   heroTitle: {
     ...typography.display,

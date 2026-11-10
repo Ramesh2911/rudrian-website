@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -126,6 +126,14 @@ export function ProfileScreen(): React.JSX.Element {
           end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
+          <View style={styles.logoPill}>
+            <Image
+              source={require('../assets/wordmark.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+              accessibilityLabel="Rudrian Logistics Solutions logo"
+            />
+          </View>
           <Avatar name={displayName} size={72} />
           <Text style={styles.heroName}>{displayName}</Text>
           <Text style={styles.heroRole}>{profile?.user?.role ?? user?.role ?? 'Rider'}</Text>
@@ -226,7 +234,7 @@ export function ProfileScreen(): React.JSX.Element {
             </View>
             <View style={styles.settingTextWrap}>
               <Text style={styles.settingTitle}>App version</Text>
-              <Text style={styles.settingSubtitle}>SwiftLogix Rider v{appVersion}</Text>
+              <Text style={styles.settingSubtitle}>Rudrian Logistics Rider v{appVersion}</Text>
             </View>
           </View>
 
@@ -255,7 +263,7 @@ export function ProfileScreen(): React.JSX.Element {
           variant="outline"
           onPress={() => setConfirmLogout(true)}
           testID="logout-button"
-          accessibilityLabel="Log out of SwiftLogix Rider"
+          accessibilityLabel="Log out of Rudrian Logistics Rider"
           style={styles.logout}
         />
       </ScrollView>
@@ -289,6 +297,17 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxl,
     paddingHorizontal: spacing.xl,
     marginBottom: spacing.lg,
+  },
+  logoPill: {
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
+    marginBottom: spacing.lg,
+  },
+  logoImage: {
+    width: 156,
+    height: 70,
   },
   heroName: {
     ...typography.h1,
