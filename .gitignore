@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+.next/
+.expo/
+.expo-shared/
+coverage/
+*.log
+npm-debug.log*
+.env
+.env.local
+.env.production
+server/uploads/*
+!server/uploads/.gitkeep
+server/src/generated/
+Main ERP/dist/
+Website/.next/
+"rider app"/.expo/
+"rider app"/.expo/
+.DS_Store
+*.tsbuildinfo
+.vscode/
+.idea/
+
+deploy/.env

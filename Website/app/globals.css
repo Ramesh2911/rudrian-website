@@ -1,0 +1,333 @@
+@import "tailwindcss";
+
+@theme {
+  --color-page: #f6f8fb;
+  --color-card: #ffffff;
+  --color-line: #e6eaf2;
+  --color-ink: #0b1220;
+  --color-body: #475569;
+  --color-muted: #94a3b8;
+  --color-brand: #12b2aa;
+  --color-brand-dark: #0e8f8a;
+  --color-brand-50: #eafbf9;
+  --color-accent: #7bc043;
+  --color-success: #16a34a;
+  --color-success-bg: #ecfdf5;
+  --color-warning: #d97706;
+  --color-warning-bg: #fff7ed;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fef2f2;
+  --color-info: #12b2aa;
+  --color-info-bg: #eafbf9;
+  --color-violet: #7c3aed;
+  --color-violet-bg: #f5f3ff;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 32px -16px rgba(15, 23, 42, 0.16);
+  --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-lift: 0 1px 2px rgba(15, 23, 42, 0.04), 0 20px 44px -18px rgba(15, 23, 42, 0.24);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-page);
+    color: var(--color-body);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--color-ink);
+    letter-spacing: -0.022em;
+  }
+
+  ::selection {
+    background-color: #ccfbf1;
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #d5dce9;
+    border-radius: 999px;
+    border: 3px solid var(--color-page);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #b9c4d6;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .card {
+    @apply rounded-2xl border border-line bg-card shadow-card;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lift hover:ring-1 hover:ring-brand/20;
+  }
+
+  .btn {
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold tracking-tight transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:pointer-events-none disabled:opacity-60;
+  }
+
+  .btn-primary {
+    @apply bg-brand text-white shadow-[0_8px_20px_-10px_rgba(18,178,170,0.7)] hover:bg-brand-dark;
+  }
+
+  .btn-secondary {
+    @apply border border-line bg-card text-ink hover:border-brand/40 hover:text-brand;
+  }
+
+  .btn-ghost {
+    @apply text-body hover:bg-brand-50 hover:text-brand;
+  }
+
+  .btn-lg {
+    @apply min-h-12 px-7 text-base;
+  }
+
+  .btn-sm {
+    @apply min-h-9 px-3.5 text-xs;
+  }
+
+  .input-base {
+    @apply w-full rounded-xl border border-line bg-card px-3.5 py-3 text-sm text-ink placeholder:text-muted transition-all duration-200 focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10;
+  }
+
+  .input-error {
+    @apply border-danger/60 focus:border-danger focus:ring-danger/10;
+  }
+
+  .label-base {
+    @apply mb-1.5 block text-sm font-semibold text-ink;
+  }
+
+  .field-error {
+    @apply mt-1.5 block text-xs font-medium text-danger;
+  }
+
+  .skeleton {
+    @apply rounded-xl bg-line/70;
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.65) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+
+  .divider {
+    @apply h-px w-full bg-line;
+  }
+
+  .ticker {
+    @apply overflow-hidden;
+    mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  }
+
+  .ticker-track {
+    @apply flex w-max;
+    animation: ticker-scroll linear infinite;
+  }
+
+  .ticker-group {
+    @apply flex shrink-0 items-center gap-10 pr-10;
+  }
+
+  .ticker:hover .ticker-track {
+    animation-play-state: paused;
+  }
+
+  .shine {
+    @apply relative overflow-hidden;
+  }
+
+  .shine::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.35) 50%, transparent 65%);
+    transform: translateX(-120%);
+    transition: transform 0.7s ease;
+  }
+
+  .shine:hover::after {
+    transform: translateX(120%);
+  }
+
+  .gradient-pan {
+    background-size: 200% 200%;
+    animation: gradient-pan 12s ease-in-out infinite;
+  }
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes gradient-pan {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes map-draw {
+  to {
+    stroke-dashoffset: -64;
+  }
+}
+
+@keyframes map-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.2;
+  }
+  50% {
+    transform: scale(1.55);
+    opacity: 0.05;
+  }
+}
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes blob-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(30px, -24px, 0) scale(1.08);
+  }
+  66% {
+    transform: translate3d(-24px, 16px, 0) scale(0.95);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.map-route {
+  stroke-dasharray: 8 8;
+  animation: map-draw 2.4s linear infinite;
+}
+
+.map-node-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: map-pulse 2.6s ease-in-out infinite;
+}
+
+.float-soft {
+  animation: float-y 5s ease-in-out infinite;
+}
+
+.blob-drift {
+  animation: blob-drift 18s ease-in-out infinite;
+}
+
+.stagger-in {
+  opacity: 0;
+  animation: fade-in-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .ticker-track {
+    animation: none !important;
+  }
+
+  .stagger-in {
+    opacity: 1;
+  }
+}

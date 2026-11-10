@@ -1,0 +1,752 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  SUPER_ADMIN
+  BRANCH_MANAGER
+  HUB_MANAGER
+  COUNTER_STAFF
+  OPERATIONS
+  HR_ADMIN
+  RIDER
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum LocationType {
+  BRANCH
+  HUB
+}
+
+enum ShipmentStatus {
+  BOOKED
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  NDR
+  RETURNED
+  RTS
+  CANCELLED
+}
+
+enum BookingSource {
+  ADMIN
+  COUNTER
+  PORTAL
+}
+
+enum ServiceType {
+  STANDARD
+  EXPRESS
+  SURFACE
+}
+
+enum ParcelCategory {
+  DOCUMENT
+  GENERAL
+  FRAGILE
+  LIQUID
+  ELECTRONICS
+}
+
+enum PaymentMethod {
+  CASH
+  UPI_QR
+  RAZORPAY
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum TaskType {
+  DELIVERY
+  PICKUP
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum ManifestStatus {
+  OPEN
+  IN_TRANSIT
+  CLOSED
+  RECEIVED
+}
+
+enum NdrReason {
+  CUSTOMER_UNAVAILABLE
+  WRONG_ADDRESS
+  RESCHEDULED
+  REFUSED
+  DAMAGE
+  ADDRESS_UNTRACEABLE
+  OTHER
+}
+
+enum NdrAction {
+  REATTEMPT
+  RETURN
+  REROUTE
+}
+
+enum TicketCategory {
+  DELAY
+  NON_DELIVERY
+  DAMAGED
+  ADDRESS_CHANGE
+  OTHER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum CommentVisibility {
+  PUBLIC
+  INTERNAL
+}
+
+enum NotifyChannel {
+  WHATSAPP
+  SMS
+}
+
+enum NotifyStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum LeaveType {
+  CASUAL
+  SICK
+  EARNED
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ShiftType {
+  MORNING
+  DAY
+  NIGHT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  LATE
+  LEAVE
+  WEEK_OFF
+}
+
+enum AttendanceSource {
+  WEB
+  MOBILE
+}
+
+enum ComponentType {
+  EARNING
+  DEDUCTION
+}
+
+enum PayrollStatus {
+  DRAFT
+  PAID
+}
+
+enum LedgerType {
+  CASH_IN
+  CASH_OUT
+  ADJUSTMENT
+}
+
+model User {
+  id            String     @id @default(cuid())
+  name          String
+  email         String?    @unique
+  phone         String     @unique
+  passwordHash  String
+  role          Role       @default(OPERATIONS)
+  status        UserStatus @default(ACTIVE)
+  avatarUrl     String?
+  locationId    String?
+  location      Location?  @relation(fields: [locationId], references: [id])
+  profile       RiderProfile?
+  salary        SalaryStructure?
+  refreshTokens RefreshToken[]
+  shipmentsCreated Shipment[]       @relation("shipment_creator")
+  assignedShipments Shipment[]      @relation("shipment_rider")
+  riderTasks    RiderTask[]
+  pods          Pod[]          @relation("pod_rider")
+  attendance    Attendance[]
+  rosters       ShiftRoster[]
+  leaveRequests LeaveRequest[]      @relation("leave_requester")
+  leaveDecisions LeaveRequest[]     @relation("leave_approver")
+  payrollRuns   PayrollRun[]
+  manifestsClosed Manifest[]
+  ledgerEntries CashLedgerEntry[]
+  closings      DayClosing[]
+  notifications NotificationLog[]
+  ticketsCreated Ticket[]           @relation("ticket_creator")
+  ndrHandled    NdrEvent[]
+  historyActor  ShipmentStatusHistory[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([role, status])
+  @@index([locationId])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model RiderProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicleType   String   @default("BIKE")
+  vehicleNumber String?
+  licenseNumber String?
+  joinedAt      DateTime @default(now())
+  active        Boolean  @default(true)
+}
+
+model Location {
+  id        String       @id @default(cuid())
+  code      String       @unique
+  name      String
+  type      LocationType @default(HUB)
+  address   String?
+  city      String?
+  state     String?
+  pincode   String?
+  latitude  Float?
+  longitude Float?
+  phone     String?
+  active    Boolean      @default(true)
+  parentId  String?
+  parent    Location?    @relation("location_tree", fields: [parentId], references: [id])
+  children  Location[]   @relation("location_tree")
+  users     User[]
+  statusHistory ShipmentStatusHistory[]
+  originShipments Shipment[] @relation("shipment_origin")
+  destShipments   Shipment[] @relation("shipment_dest")
+  currentShipments Shipment[] @relation("shipment_current")
+  manifestsFrom    Manifest[] @relation("manifest_from")
+  manifestsTo      Manifest[] @relation("manifest_to")
+  tickets    Ticket[]
+  ledger     CashLedgerEntry[]
+  closings   DayClosing[]
+  shifts     Shift[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([type, active])
+  @@index([pincode])
+}
+
+model Counter {
+  name  String @id
+  value Int    @default(0)
+}
+
+model Zone {
+  id        String       @id @default(cuid())
+  code      String       @unique
+  name      String
+  pincodes  ZonePincode[]
+  createdAt DateTime     @default(now())
+}
+
+model ZonePincode {
+  pincode String @id @db.VarChar(6)
+  zoneId  String
+  zone    Zone   @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+
+  @@index([zoneId])
+}
+
+model PricingRule {
+  id            String      @id @default(cuid())
+  serviceType   ServiceType
+  fromZone      String      @default("ANY")
+  toZone        String      @default("ANY")
+  baseCharge    Decimal     @default(0) @db.Decimal(12, 2)
+  perKgRate     Decimal     @default(0) @db.Decimal(12, 2)
+  minCharge     Decimal     @default(0) @db.Decimal(12, 2)
+  fuelPercent   Decimal     @default(9) @db.Decimal(5, 2)
+  codPercent    Decimal     @default(3) @db.Decimal(5, 2)
+  insurancePercent Decimal  @default(0.5) @db.Decimal(5, 2)
+  gstPercent    Decimal     @default(18) @db.Decimal(5, 2)
+  estimatedDays Int         @default(3)
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([serviceType, fromZone, toZone])
+}
+
+model Shipment {
+  id                 String          @id @default(cuid())
+  awbNumber          String          @unique
+  status             ShipmentStatus  @default(BOOKED)
+  bookingSource      BookingSource   @default(ADMIN)
+  serviceType        ServiceType     @default(STANDARD)
+
+  senderName         String
+  senderPhone        String
+  senderAddress      String          @db.Text
+  senderPincode      String          @db.VarChar(6)
+  senderCity         String
+  senderState        String?
+
+  receiverName       String
+  receiverPhone      String
+  receiverAddress    String          @db.Text
+  receiverPincode    String          @db.VarChar(6)
+  receiverCity       String
+  receiverState      String?
+
+  parcelCategory     ParcelCategory  @default(GENERAL)
+  lengthCm           Decimal         @db.Decimal(10, 2)
+  widthCm            Decimal         @db.Decimal(10, 2)
+  heightCm           Decimal         @db.Decimal(10, 2)
+  physicalWeight     Decimal         @db.Decimal(10, 3)
+  volumetricWeight   Decimal         @db.Decimal(10, 3)
+  chargeableWeight   Decimal         @db.Decimal(10, 3)
+  declaredValue      Decimal         @default(0) @db.Decimal(12, 2)
+  codAmount          Decimal         @default(0) @db.Decimal(12, 2)
+
+  baseCharge         Decimal         @default(0) @db.Decimal(12, 2)
+  fuelSurcharge      Decimal         @default(0) @db.Decimal(12, 2)
+  codCharge          Decimal         @default(0) @db.Decimal(12, 2)
+  insuranceCharge    Decimal         @default(0) @db.Decimal(12, 2)
+  gstAmount          Decimal         @default(0) @db.Decimal(12, 2)
+  totalCharge        Decimal         @default(0) @db.Decimal(12, 2)
+
+  originLocationId   String
+  destLocationId     String
+  currentLocationId  String?
+  assignedRiderId    String?
+  createdById        String?
+
+  originLocation     Location?       @relation("shipment_origin", fields: [originLocationId], references: [id])
+  destLocation       Location?       @relation("shipment_dest", fields: [destLocationId], references: [id])
+  currentLocation    Location?       @relation("shipment_current", fields: [currentLocationId], references: [id])
+  assignedRider      User?           @relation("shipment_rider", fields: [assignedRiderId], references: [id])
+  createdBy          User?           @relation("shipment_creator", fields: [createdById], references: [id])
+
+  otpHash            String?
+  otpExpiresAt       DateTime?
+  history            ShipmentStatusHistory[]
+  manifests          ManifestItem[]
+  tasks              RiderTask[]
+  pod                Pod?
+  payments           Payment[]
+  ndrEvents          NdrEvent[]
+  notifications      NotificationLog[]
+
+  pickedUpAt         DateTime?
+  outForDeliveryAt   DateTime?
+  deliveredAt        DateTime?
+  cancelledAt        DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([status, createdAt])
+  @@index([destLocationId, status])
+  @@index([assignedRiderId])
+  @@index([receiverPhone])
+  @@index([senderPhone])
+}
+
+model ShipmentStatusHistory {
+  id          String          @id @default(cuid())
+  shipmentId  String
+  shipment    Shipment        @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  status      ShipmentStatus
+  remarks     String?         @db.Text
+  locationId  String?
+  location    Location?       @relation(fields: [locationId], references: [id])
+  actorId     String?
+  actor       User?           @relation(fields: [actorId], references: [id])
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime        @default(now())
+
+  @@index([shipmentId, createdAt])
+}
+
+model Manifest {
+  id             String         @id @default(cuid())
+  manifestNumber String         @unique
+  status         ManifestStatus @default(OPEN)
+  fromLocationId String
+  toLocationId   String
+  fromLocation   Location?      @relation("manifest_from", fields: [fromLocationId], references: [id])
+  toLocation     Location?      @relation("manifest_to", fields: [toLocationId], references: [id])
+  vehicleNumber  String?
+  driverName     String?
+  driverPhone    String?
+  scannedCount   Int            @default(0)
+  closedById     String?
+  closedBy       User?          @relation(fields: [closedById], references: [id])
+  items          ManifestItem[]
+  createdAt      DateTime       @default(now())
+  closedAt       DateTime?
+  receivedAt     DateTime?
+
+  @@index([status, createdAt])
+  @@index([fromLocationId])
+  @@index([toLocationId])
+}
+
+model ManifestItem {
+  id          String     @id @default(cuid())
+  manifestId  String
+  manifest    Manifest   @relation(fields: [manifestId], references: [id], onDelete: Cascade)
+  shipmentId  String
+  shipment    Shipment   @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  scannedById String?
+  scannedAt   DateTime   @default(now())
+
+  @@unique([manifestId, shipmentId])
+  @@index([shipmentId])
+}
+
+model NdrEvent {
+  id              String      @id @default(cuid())
+  shipmentId      String
+  shipment        Shipment    @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  reason          NdrReason
+  remarks         String?     @db.Text
+  action          NdrAction
+  nextAttemptDate DateTime?
+  handledById     String?
+  handledBy       User?       @relation(fields: [handledById], references: [id])
+  createdAt       DateTime    @default(now())
+
+  @@index([shipmentId])
+  @@index([createdAt])
+}
+
+model RiderTask {
+  id         String     @id @default(cuid())
+  riderId    String
+  rider      User       @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  shipmentId String
+  shipment   Shipment   @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  type       TaskType
+  status     TaskStatus @default(PENDING)
+  date       DateTime   @db.Date
+  sequence   Int        @default(0)
+  codAmount  Decimal    @default(0) @db.Decimal(12, 2)
+  notes      String?    @db.Text
+  attempts   Int        @default(0)
+  createdAt  DateTime   @default(now())
+  completedAt DateTime?
+
+  @@unique([shipmentId, type])
+  @@index([riderId, date])
+  @@index([status])
+}
+
+model Pod {
+  id            String   @id @default(cuid())
+  shipmentId    String   @unique
+  shipment      Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  signatureUrl  String?  @db.Text
+  photoUrl      String?  @db.Text
+  recipientName String?
+  notes         String?  @db.Text
+  otpVerified   Boolean  @default(false)
+  latitude      Float?
+  longitude     Float?
+  byRiderId     String?
+  byRider       User?    @relation("pod_rider", fields: [byRiderId], references: [id])
+  capturedAt    DateTime @default(now())
+
+  @@index([capturedAt])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  shipmentId  String?
+  shipment    Shipment?     @relation(fields: [shipmentId], references: [id])
+  method      PaymentMethod
+  status      PaymentStatus @default(PENDING)
+  amount      Decimal       @db.Decimal(12, 2)
+  currency    String        @default("INR")
+  orderId     String?       @unique
+  paymentId   String?
+  signature   String?       @db.Text
+  createdAt   DateTime      @default(now())
+  verifiedAt  DateTime?
+
+  @@index([shipmentId])
+  @@index([status, createdAt])
+}
+
+model CashLedgerEntry {
+  id          String     @id @default(cuid())
+  locationId  String
+  location    Location   @relation(fields: [locationId], references: [id])
+  date        DateTime   @db.Date
+  type        LedgerType
+  amount      Decimal    @db.Decimal(12, 2)
+  description String
+  reference   String?
+  shipmentId  String?
+  createdById String?
+  createdBy   User?      @relation(fields: [createdById], references: [id])
+  createdAt   DateTime   @default(now())
+
+  @@index([locationId, date])
+}
+
+model DayClosing {
+  id             String   @id @default(cuid())
+  locationId     String
+  location       Location @relation(fields: [locationId], references: [id])
+  date           DateTime @db.Date
+  expectedAmount Decimal  @db.Decimal(12, 2)
+  closedAmount   Decimal  @db.Decimal(12, 2)
+  difference     Decimal  @db.Decimal(12, 2)
+  remarks        String?  @db.Text
+  closedById     String?
+  closedBy       User?    @relation(fields: [closedById], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@unique([locationId, date])
+}
+
+model Ticket {
+  id                 String          @id @default(cuid())
+  ticketNumber       String          @unique
+  name               String
+  phone              String
+  email              String?
+  category           TicketCategory
+  awbNumber          String?
+  subject            String
+  message            String          @db.Text
+  status             TicketStatus    @default(OPEN)
+  priority           TicketPriority  @default(NORMAL)
+  assignedLocationId String?
+  assignedLocation   Location?       @relation(fields: [assignedLocationId], references: [id])
+  slaDueAt           DateTime?
+  createdById        String?
+  createdBy          User?           @relation("ticket_creator", fields: [createdById], references: [id])
+  comments           TicketComment[]
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  resolvedAt         DateTime?
+
+  @@index([status, createdAt])
+  @@index([phone])
+  @@index([awbNumber])
+}
+
+model TicketComment {
+  id         String            @id @default(cuid())
+  ticketId   String
+  ticket     Ticket            @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorName String
+  authorRole String?
+  visibility CommentVisibility @default(PUBLIC)
+  message    String            @db.Text
+  createdAt  DateTime          @default(now())
+
+  @@index([ticketId])
+}
+
+model MessageTemplate {
+  id      String        @id @default(cuid())
+  code    String        @unique
+  channel NotifyChannel
+  title   String
+  body    String        @db.Text
+  active  Boolean       @default(true)
+}
+
+model NotificationLog {
+  id          String        @id @default(cuid())
+  channel     NotifyChannel
+  recipient   String
+  template    String
+  title       String?
+  body        String        @db.Text
+  status      NotifyStatus  @default(QUEUED)
+  providerRef String?
+  error       String?       @db.Text
+  shipmentId  String?
+  shipment    Shipment?     @relation(fields: [shipmentId], references: [id])
+  userId      String?
+  user        User?         @relation(fields: [userId], references: [id])
+  createdAt   DateTime      @default(now())
+  sentAt      DateTime?
+
+  @@index([recipient, createdAt])
+  @@index([status, createdAt])
+}
+
+model OtpCode {
+  id         String    @id @default(cuid())
+  phone      String
+  codeHash   String
+  purpose    String    @default("DELIVERY")
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, purpose])
+}
+
+model Attendance {
+  id               String           @id @default(cuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date             DateTime         @db.Date
+  status           AttendanceStatus @default(PRESENT)
+  inTime           DateTime?
+  outTime          DateTime?
+  inLatitude       Float?
+  inLongitude      Float?
+  outLatitude      Float?
+  outLongitude     Float?
+  source           AttendanceSource @default(WEB)
+  overtimeMinutes  Int              @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@unique([userId, date])
+  @@index([date])
+}
+
+model Shift {
+  id        String        @id @default(cuid())
+  name      String
+  type      ShiftType
+  startTime String
+  endTime   String
+  locationId String?
+  location  Location?     @relation(fields: [locationId], references: [id])
+  rosters   ShiftRoster[]
+  createdAt DateTime      @default(now())
+}
+
+model ShiftRoster {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date     DateTime @db.Date
+  shiftId  String
+  shift    Shift    @relation(fields: [shiftId], references: [id])
+
+  @@unique([userId, date])
+}
+
+model LeaveRequest {
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation("leave_requester", fields: [userId], references: [id], onDelete: Cascade)
+  type       LeaveType
+  fromDate   DateTime    @db.Date
+  toDate     DateTime    @db.Date
+  reason     String      @db.Text
+  status     LeaveStatus @default(PENDING)
+  approverId String?
+  approver   User?       @relation("leave_approver", fields: [approverId], references: [id])
+  decidedAt  DateTime?
+  createdAt  DateTime    @default(now())
+
+  @@index([status, createdAt])
+}
+
+model SalaryComponent {
+  id           String        @id @default(cuid())
+  code         String        @unique
+  name         String
+  type         ComponentType
+  defaultValue Decimal       @default(0) @db.Decimal(12, 2)
+}
+
+model SalaryStructure {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  basic           Decimal  @db.Decimal(12, 2)
+  hra             Decimal  @default(0) @db.Decimal(12, 2)
+  travelAllowance Decimal  @default(0) @db.Decimal(12, 2)
+  otherEarnings   Decimal  @default(0) @db.Decimal(12, 2)
+  deductions      Decimal  @default(0) @db.Decimal(12, 2)
+  incentives      Decimal  @default(0) @db.Decimal(12, 2)
+  updatedAt       DateTime @updatedAt
+}
+
+model PayrollRun {
+  id              String         @id @default(cuid())
+  month           String
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  basic           Decimal        @db.Decimal(12, 2)
+  hra             Decimal        @default(0) @db.Decimal(12, 2)
+  travelAllowance Decimal        @default(0) @db.Decimal(12, 2)
+  otherEarnings   Decimal        @default(0) @db.Decimal(12, 2)
+  deductions      Decimal        @default(0) @db.Decimal(12, 2)
+  incentives      Decimal        @default(0) @db.Decimal(12, 2)
+  netSalary       Decimal        @db.Decimal(12, 2)
+  workingDays     Int            @default(0)
+  presentDays     Int            @default(0)
+  status          PayrollStatus  @default(DRAFT)
+  createdAt       DateTime       @default(now())
+
+  @@unique([month, userId])
+  @@index([month])
+}

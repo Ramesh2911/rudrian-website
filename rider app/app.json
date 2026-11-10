@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "SwiftLogix Rider",
+    "slug": "swiftlogix-rider",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F6F8FB",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.swiftlogix.rider"
+    },
+    "android": {
+      "package": "com.swiftlogix.rider",
+      "adaptiveIcon": {
+        "backgroundColor": "#2563EB"
+      }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow SwiftLogix Rider to scan parcel barcodes."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow photo capture for Proof of Delivery."
+        }
+      ]
+    ]
+  }
+}
