@@ -615,6 +615,7 @@ const styles = StyleSheet.create({
   },
   cardTitleSpaced: {
     marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
   },
   cardTitleFlat: {
     marginBottom: 0,
