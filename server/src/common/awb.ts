@@ -9,8 +9,8 @@ function dateCode(d = new Date()): string {
 
 export async function nextSequence(name: string): Promise<number> {
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`INSERT INTO counters (name, value) VALUES (${name}, 0) ON DUPLICATE KEY UPDATE name = name`;
-    await tx.$executeRaw`UPDATE counters SET value = LAST_INSERT_ID(value + 1) WHERE name = ${name}`;
+  await tx.$executeRaw`INSERT INTO Counter (name, value) VALUES (${name}, 0) ON DUPLICATE KEY UPDATE name = name`;
+  await tx.$executeRaw`UPDATE Counter SET value = LAST_INSERT_ID(value + 1) WHERE name = ${name}`;
     const rows = await tx.$queryRaw<{ id: bigint }[]>`SELECT LAST_INSERT_ID() AS id`;
     return Number(rows[0]?.id ?? 0);
   });

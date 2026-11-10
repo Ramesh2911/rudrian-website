@@ -354,8 +354,8 @@ async function seedDemoData(locationIds: Map<string, string>, userIds: Map<strin
 
   const counterName = `awb:${dateKey}`;
   await prisma.$transaction([
-    prisma.$executeRaw`INSERT INTO counters (name, value) VALUES (${counterName}, 0) ON DUPLICATE KEY UPDATE value = value`,
-    prisma.$executeRaw`UPDATE counters SET value = GREATEST(value, 4) WHERE name = ${counterName}`,
+  prisma.$executeRaw`INSERT INTO Counter (name, value) VALUES (${counterName}, 0) ON DUPLICATE KEY UPDATE value = value`,
+  prisma.$executeRaw`UPDATE Counter SET value = GREATEST(value, 4) WHERE name = ${counterName}`,
   ]);
 
   const manifestNumber = await generateManifestNumber();
