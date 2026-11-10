@@ -2,6 +2,7 @@
   "expo": {
     "name": "Rudrian Logistics Rider",
     "slug": "rudrianlogistics-rider",
+    "owner": "ramesh0329",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -16,6 +17,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "5ca94864-c972-4246-a22f-1f2cee6a651c"
       }
     },
     "plugins": [
