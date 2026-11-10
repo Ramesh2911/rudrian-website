@@ -14,7 +14,7 @@ import { submitPunch } from '../net/actions';
 import { riderApi } from '../api/rider';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, gradients, radius, spacing, typography } from '../theme';
 import type { AttendanceToday, RiderStats } from '../types';
 import { formatTime } from '../utils/format';
 
@@ -86,7 +86,7 @@ export function PunchScreen(): React.JSX.Element {
         </Text>
 
         <LinearGradient
-          colors={[colors.primary, colors.accent]}
+          colors={gradients.profile}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}

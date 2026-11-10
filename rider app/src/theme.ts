@@ -1,16 +1,20 @@
 import { Platform, TextStyle, ViewStyle } from 'react-native';
 
 export const colors = {
-  bg: '#F6F8FB',
+  bg: '#F3FAFB',
   card: '#FFFFFF',
-  border: '#E6EAF2',
-  ink: '#0B1220',
-  body: '#475569',
-  muted: '#94A3B8',
-  primary: '#2563EB',
-  primaryDark: '#1D4ED8',
-  primary50: '#EFF6FF',
-  accent: '#4F46E5',
+  border: '#DFF0F3',
+  ink: '#06171F',
+  body: '#3E5A63',
+  muted: '#8AA3AB',
+  primary: '#00A6B8',
+  primaryDark: '#00788C',
+  primaryBright: '#2CC9D9',
+  primary50: '#E4F8FB',
+  petrol: '#005070',
+  petrolSoft: '#007A92',
+  accent: '#008090',
+  lime: '#C6E64B',
   success: '#16A34A',
   successBg: '#ECFDF5',
   warning: '#D97706',
@@ -20,6 +24,13 @@ export const colors = {
   violet: '#7C3AED',
   violetBg: '#F5F3FF',
   white: '#FFFFFF',
+} as const;
+
+export const gradients = {
+  hero: ['#005070', '#007A92', '#00A6B8'] as const,
+  button: [colors.primary, colors.primaryDark] as const,
+  brand: [colors.primaryBright, colors.primary] as const,
+  profile: [colors.petrol, colors.primary] as const,
 } as const;
 
 export const spacing = {

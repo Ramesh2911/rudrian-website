@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -15,12 +16,11 @@ import * as Haptics from 'expo-haptics';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { Button } from '../components/Button';
-import { Card } from '../components/Card';
 import { Input } from '../components/Input';
 import type { AuthStackParamList } from '../navigation/types';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
-import { colors, radius, spacing, typography, appVersion } from '../theme';
+import { colors, gradients, radius, spacing, typography, appVersion } from '../theme';
 import { getErrorMessage } from '../utils/format';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
@@ -34,6 +34,33 @@ export function LoginScreen(_props: Props): React.JSX.Element {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signedInCenter, setSignedInCenter] = useState<string | null>(null);
+
+  const entrance = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(entrance, {
+      toValue: 1,
+      duration: 520,
+      useNativeDriver: true,
+    }).start();
+  }, [entrance]);
+
+  const blockStyle = (inputRange: readonly number[]) => ({
+    opacity: entrance.interpolate({
+      inputRange,
+      outputRange: [0, 1],
+      extrapolate: 'clamp',
+    }),
+    transform: [
+      {
+        translateY: entrance.interpolate({
+          inputRange,
+          outputRange: [22, 0],
+          extrapolate: 'clamp',
+        }),
+      },
+    ],
+  });
 
   const submit = async (): Promise<void> => {
     const id = identifier.trim();
@@ -66,18 +93,26 @@ export function LoginScreen(_props: Props): React.JSX.Element {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <LinearGradient
+        colors={gradients.hero}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      >
+        <View pointerEvents="none" style={styles.decorLayer}>
+          <View style={styles.glowTop} />
+          <View style={styles.glowBottom} />
+          <View style={styles.limeDash} />
+        </View>
+      </LinearGradient>
+
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={[colors.primary, colors.accent]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
-          <View style={styles.logoPill}>
+        <Animated.View style={[styles.logoBlock, blockStyle([0, 0.55])]}>
+          <View style={styles.logoCard}>
             <Image
               source={require('../assets/wordmark.png')}
               style={styles.logoImage}
@@ -85,70 +120,75 @@ export function LoginScreen(_props: Props): React.JSX.Element {
               accessibilityLabel="Rudrian Logistics Solutions logo"
             />
           </View>
-          <Text style={styles.heroTitle}>Rudrian Logistics Rider</Text>
+          <Text style={styles.eyebrow}>RIDER PARTNER APP</Text>
+          <Text style={styles.heroTitle}>Welcome back</Text>
           <Text style={styles.heroSubtitle}>
-            Deliveries, pickups and proof of delivery in one place.
+            Sign in to start today&apos;s deliveries, pickups and proof of delivery.
           </Text>
-        </LinearGradient>
+        </Animated.View>
 
-        <Card style={styles.formCard} testID="login-card">
-          <Text style={styles.formTitle}>Sign in</Text>
-          <Text style={styles.formHint}>Use the phone number or email registered with dispatch.</Text>
+        <Animated.View style={[styles.formWrap, blockStyle([0.18, 0.75])]}>
+          <View style={styles.formCard} testID="login-card">
+            <Text style={styles.formTitle}>Sign in</Text>
+            <Text style={styles.formHint}>
+              Use the phone number or email registered with dispatch.
+            </Text>
 
-          <Input
-            label="Phone or email"
-            placeholder="9876543210 or rider@rudrianlogistics.com"
-            value={identifier}
-            onChangeText={setIdentifier}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            leftIcon="person-circle-outline"
-            containerStyle={styles.input}
-            testID="login-identifier"
-          />
+            <Input
+              label="Phone or email"
+              placeholder="9876543210 or rider@rudrianlogistics.com"
+              value={identifier}
+              onChangeText={setIdentifier}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              leftIcon="person-circle-outline"
+              containerStyle={styles.input}
+              testID="login-identifier"
+            />
 
-          <Input
-            label="Password"
-            placeholder="Enter your password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            leftIcon="lock-closed-outline"
-            containerStyle={styles.input}
-            testID="login-password"
-            onSubmitEditing={() => void submit()}
-          />
+            <Input
+              label="Password"
+              placeholder="Enter your password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              leftIcon="lock-closed-outline"
+              containerStyle={styles.input}
+              testID="login-password"
+              onSubmitEditing={() => void submit()}
+            />
 
-          {error ? (
-            <View style={styles.errorBox} accessibilityRole="alert">
-              <Ionicons name="alert-circle-outline" size={16} color={colors.danger} />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
+            {error ? (
+              <View style={styles.errorBox} accessibilityRole="alert">
+                <Ionicons name="alert-circle-outline" size={16} color={colors.danger} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
 
-          {signedInCenter ? (
-            <View style={styles.centerRow} accessibilityRole="status">
-              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-              <Text style={styles.centerText} numberOfLines={1}>
-                Signed in to {signedInCenter}
-              </Text>
-            </View>
-          ) : null}
+            {signedInCenter ? (
+              <View style={styles.centerRow} accessibilityRole="status">
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                <Text style={styles.centerText} numberOfLines={1}>
+                  Signed in to {signedInCenter}
+                </Text>
+              </View>
+            ) : null}
 
-          <Button
-            label="Sign In"
-            onPress={() => void submit()}
-            loading={loading}
-            testID="login-button"
-            accessibilityLabel="Sign in"
-            style={styles.button}
-          />
-        </Card>
+            <Button
+              label="Sign In"
+              onPress={() => void submit()}
+              loading={loading}
+              testID="login-button"
+              accessibilityLabel="Sign in"
+              style={styles.button}
+            />
+          </View>
+        </Animated.View>
 
-        <Pressable style={styles.footer} accessibilityRole="text">
+        <Animated.View style={[styles.footer, blockStyle([0.35, 1])]}>
           <Text style={styles.footerText}>Rudrian Logistics Rider v{appVersion}</Text>
-        </Pressable>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -157,44 +197,105 @@ export function LoginScreen(_props: Props): React.JSX.Element {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.petrol,
+  },
+  decorLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  glowTop: {
+    position: 'absolute',
+    top: -90,
+    right: -70,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: 'rgba(255,255,255,0.09)',
+  },
+  glowBottom: {
+    position: 'absolute',
+    bottom: 40,
+    left: -110,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(44,201,217,0.20)',
+  },
+  limeDash: {
+    position: 'absolute',
+    top: 64,
+    left: 32,
+    width: 44,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.lime,
+    opacity: 0.9,
   },
   scroll: {
     flexGrow: 1,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxxl + spacing.xl,
+    paddingTop: spacing.xxxl + spacing.xxl,
     paddingBottom: spacing.xxxl,
+    justifyContent: 'center',
   },
-  hero: {
-    borderRadius: radius.card,
-    padding: spacing.xxl,
+  logoBlock: {
+    alignItems: 'center',
+    marginBottom: spacing.xxl,
+  },
+  logoCard: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    shadowColor: '#001E2C',
+    shadowOpacity: 0.28,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 10,
     marginBottom: spacing.xl,
   },
-  logoPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
-    marginBottom: spacing.lg,
-  },
   logoImage: {
-    width: 168,
-    height: 76,
+    width: 184,
+    height: 82,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 2.4,
+    color: colors.lime,
+    marginBottom: spacing.sm,
   },
   heroTitle: {
     ...typography.display,
     color: colors.white,
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 32,
+    lineHeight: 38,
+    textAlign: 'center',
   },
   heroSubtitle: {
     ...typography.body,
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.78)',
     marginTop: spacing.sm,
+    textAlign: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  formWrap: {
+    width: '100%',
   },
   formCard: {
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderRadius: 24,
     padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.65)',
+    shadowColor: '#001E2C',
+    shadowOpacity: 0.3,
+    shadowRadius: 26,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 12,
   },
   formTitle: {
     ...typography.h1,
@@ -238,6 +339,11 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: spacing.xs,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.4,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   footer: {
     alignItems: 'center',
@@ -245,6 +351,6 @@ const styles = StyleSheet.create({
   },
   footerText: {
     ...typography.caption,
-    color: colors.muted,
+    color: 'rgba(255,255,255,0.55)',
   },
 });

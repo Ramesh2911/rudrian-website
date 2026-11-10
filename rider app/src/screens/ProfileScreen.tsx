@@ -19,7 +19,7 @@ import { getPendingOutboxCount, getLastSyncedAt, syncOutbox } from '../net/sync'
 import { useOnline } from '../net/useOnline';
 import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
-import { appVersion, colors, radius, spacing, typography } from '../theme';
+import { appVersion, colors, gradients, radius, spacing, typography } from '../theme';
 import type { ProfileData } from '../types';
 import { formatTime } from '../utils/format';
 
@@ -121,7 +121,7 @@ export function ProfileScreen(): React.JSX.Element {
         showsVerticalScrollIndicator={false}
       >
         <LinearGradient
-          colors={[colors.primary, colors.accent]}
+          colors={gradients.profile}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}

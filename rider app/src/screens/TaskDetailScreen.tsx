@@ -111,7 +111,7 @@ export function TaskDetailScreen(): React.JSX.Element {
     const address = party?.address ?? 'N/A';
     const html = `
       <html>
-        <body style="font-family: -apple-system, sans-serif; padding: 32px; color: #0B1220;">
+        <body style="font-family: -apple-system, sans-serif; padding: 32px; color: #06171F;">
           <h2 style="margin:0 0 4px 0;">Rudrian Logistics Rider</h2>
           <p style="margin:0 0 24px 0; color:#475569;">Delivery receipt</p>
           <p><strong>AWB:</strong> ${task.awbNumber}</p>
