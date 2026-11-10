@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -40,6 +40,7 @@
   "devDependencies": {
     "@babel/core": "^7.26.0",
     "@types/react": "~19.3.0",
+    "babel-preset-expo": "~58.0.23",
     "typescript": "~5.9.3"
   }
 }
