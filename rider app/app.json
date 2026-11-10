@@ -23,8 +23,8 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#FFFFFF",
-          "image": "./src/assets/wordmark.png",
-          "imageWidth": 300
+          "image": "./src/assets/splash-square.png",
+          "imageWidth": 280
         }
       ],
       [
