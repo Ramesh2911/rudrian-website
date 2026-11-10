@@ -77,7 +77,8 @@ export interface AttendanceToday {
 export interface RiderStats {
   deliveredToday: number;
   pickedToday: number;
-  completedThisWeek: number;
+  pendingToday: number;
+  completedWeek: number;
 }
 
 export interface ProfileData {

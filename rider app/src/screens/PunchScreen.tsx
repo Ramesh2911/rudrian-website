@@ -150,10 +150,10 @@ export function PunchScreen(): React.JSX.Element {
             <View style={styles.weekTextWrap}>
               <Text style={styles.weekTitle}>Completed this week</Text>
               <Text style={styles.weekSubtitle}>
-                {stats?.completedThisWeek ?? 0} deliveries and pickups closed
+                {stats?.completedWeek ?? 0} deliveries and pickups closed
               </Text>
             </View>
-            <Text style={styles.weekValue}>{stats?.completedThisWeek ?? 0}</Text>
+            <Text style={styles.weekValue}>{stats?.completedWeek ?? 0}</Text>
           </View>
         </Card>
       </ScrollView>

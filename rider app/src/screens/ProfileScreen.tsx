@@ -158,7 +158,7 @@ export function ProfileScreen(): React.JSX.Element {
             <View style={styles.statDivider} />
             <View style={styles.statCell}>
               <Text style={styles.statLabel}>This week</Text>
-              <Text style={styles.statValue}>{profile?.stats?.completedThisWeek ?? 0}</Text>
+              <Text style={styles.statValue}>{profile?.stats?.completedWeek ?? 0}</Text>
             </View>
           </View>
           <View style={styles.miniStats}>

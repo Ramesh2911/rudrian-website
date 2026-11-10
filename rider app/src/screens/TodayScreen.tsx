@@ -14,13 +14,11 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Avatar } from '../components/Avatar';
-import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Loader } from '../components/Loader';
 import { PendingSyncCard } from '../components/PendingSyncCard';
 import { Segmented } from '../components/Segmented';
-import { StatCard } from '../components/StatCard';
 import { TaskCard } from '../components/TaskCard';
 import { getErrorMessage } from '../utils/format';
 import { getCoordinates } from '../utils/location';
@@ -33,7 +31,7 @@ import { mergeTask } from '../storage/localTasks';
 import { useAuth } from '../state/AuthContext';
 import { useSocket } from '../state/SocketContext';
 import { useToast } from '../state/ToastContext';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, gradients, radius, spacing, typography } from '../theme';
 import type { AttendanceToday, Task } from '../types';
 import { formatDisplayDate, formatTime, greetingForHour, todayIsoDate } from '../utils/format';
 import type { TodayStackParamList } from '../navigation/types';
@@ -56,6 +54,7 @@ export function TodayScreen(): React.JSX.Element {
   const [deliveries, setDeliveries] = useState<Task[]>([]);
   const [pickups, setPickups] = useState<Task[]>([]);
   const [attendance, setAttendance] = useState<AttendanceToday | null>(null);
+  const [weekDone, setWeekDone] = useState<number | null>(null);
   const [segment, setSegment] = useState<Segment>('deliveries');
   const [punching, setPunching] = useState(false);
   const [pending, setPending] = useState(0);
@@ -72,7 +71,10 @@ export function TodayScreen(): React.JSX.Element {
       ]);
       setDeliveries(sheet.runsheet.deliveries ?? []);
       setPickups(sheet.runsheet.pickups ?? []);
-      if (profile) setAttendance(profile.attendanceToday);
+      if (profile) {
+        setAttendance(profile.attendanceToday);
+        setWeekDone(profile.stats?.completedWeek ?? null);
+      }
       setPending(await getPendingOutboxCount());
     } catch (loadError) {
       setError(getErrorMessage(loadError));
@@ -152,6 +154,10 @@ export function TodayScreen(): React.JSX.Element {
     [mergedPickups],
   );
 
+  const totalTasks = mergedDeliveries.length + mergedPickups.length;
+  const doneToday = deliveredToday + pickedToday;
+  const progressPct = totalTasks > 0 ? Math.round(Math.min(1, doneToday / totalTasks) * 100) : 0;
+
   const activeTasks = segment === 'deliveries' ? mergedDeliveries : mergedPickups;
 
   const punchLabel = !attendance
@@ -159,6 +165,12 @@ export function TodayScreen(): React.JSX.Element {
     : attendance.action === 'IN'
       ? 'Punch Out'
       : 'Punch In';
+
+  const attendanceStatus = !attendance
+    ? 'Not punched in yet'
+    : attendance.action === 'IN'
+      ? 'On shift'
+      : 'Shift completed';
 
   const header = (
     <View>
@@ -177,76 +189,109 @@ export function TodayScreen(): React.JSX.Element {
         </Pressable>
       ) : null}
 
-      <View style={styles.greetRow}>
-        <View style={styles.greetText}>
-          <Text style={styles.greeting}>
-            {greetingForHour()}, {user?.name?.split(' ')[0] ?? 'Rider'}
-          </Text>
-          <Text style={styles.dateText}>{formatDisplayDate()}</Text>
-          {user?.location?.name ? <Text style={styles.centerText}>{user.location.name}</Text> : null}
-        </View>
-        <Avatar name={user?.name ?? 'Rider'} size={48} />
-      </View>
+      <LinearGradient
+        colors={gradients.hero}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.hero}
+      >
+        <View pointerEvents="none" style={styles.heroGlowTop} />
+        <View pointerEvents="none" style={styles.heroGlowBottom} />
 
-      <PendingSyncCard pendingCount={pending} syncing={syncing} onSyncNow={() => void onSyncNow()} />
-
-      <Card style={styles.punchCard}>
-        <View style={styles.punchTop}>
-          <View style={styles.punchStatusWrap}>
-            <Text style={styles.punchLabel}>Attendance</Text>
-            <Text style={styles.punchStatus}>
-              {!attendance
-                ? 'Not punched in yet'
-                : attendance.action === 'IN'
-                  ? 'On shift'
-                  : 'Shift completed'}
+        <View style={styles.heroTop}>
+          <View style={styles.heroGreet}>
+            <Text style={styles.greeting}>
+              {greetingForHour()}, {user?.name?.split(' ')[0] ?? 'Rider'}
             </Text>
-            <Text style={styles.punchTimes}>
-              In {formatTime(attendance?.inTime)} · Out {formatTime(attendance?.outTime)}
-            </Text>
+            <View style={styles.metaRow}>
+              <Text style={styles.dateText}>{formatDisplayDate()}</Text>
+              {user?.location?.name ? (
+                <View style={styles.centerChip}>
+                  <Text style={styles.centerChipText} numberOfLines={1}>
+                    {user.location.name}
+                  </Text>
+                </View>
+              ) : null}
+              <View style={styles.onlineChip}>
+                <View
+                  style={[
+                    styles.onlineDot,
+                    { backgroundColor: online ? colors.lime : colors.warning },
+                  ]}
+                />
+                <Text style={styles.onlineText}>{online ? 'Live' : 'Offline'}</Text>
+              </View>
+            </View>
           </View>
-          <View
-            style={[
-              styles.punchDot,
-              {
-                backgroundColor:
-                  attendance?.action === 'IN' ? colors.success : colors.muted,
-              },
-            ]}
-          />
+          <Avatar name={user?.name ?? 'Rider'} size={52} />
         </View>
+
+        <View style={styles.statsStrip}>
+          <View style={styles.statCol}>
+            <Text style={styles.statValue}>{deliveredToday}</Text>
+            <Text style={styles.statLabel}>DELIVERED</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statCol}>
+            <Text style={styles.statValue}>{pickedToday}</Text>
+            <Text style={styles.statLabel}>PICKED</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statCol}>
+            <Text style={styles.statValue}>{weekDone ?? '—'}</Text>
+            <Text style={styles.statLabel}>THIS WEEK</Text>
+          </View>
+        </View>
+
+        <View style={styles.progressBlock}>
+          <View style={styles.progressHead}>
+            <Text style={styles.progressLabel}>Today&apos;s progress</Text>
+            <Text style={styles.progressPct}>{progressPct}%</Text>
+          </View>
+          <View style={styles.progressTrack}>
+            <View
+              style={[styles.progressFill, { width: `${progressPct}%` as `${number}%` }]}
+            />
+          </View>
+          <Text style={styles.progressSub}>
+            {doneToday} of {totalTasks} task{totalTasks === 1 ? '' : 's'} completed
+          </Text>
+        </View>
+
+        <View style={styles.attendRow}>
+          <View style={styles.attendLeft}>
+            <View
+              style={[
+                styles.attendDot,
+                {
+                  backgroundColor:
+                    attendance?.action === 'IN' ? colors.lime : 'rgba(255,255,255,0.35)',
+                },
+              ]}
+            />
+            <Text style={styles.attendStatus}>{attendanceStatus}</Text>
+          </View>
+          <Text style={styles.attendTimes}>
+            In {formatTime(attendance?.inTime)} · Out {formatTime(attendance?.outTime)}
+          </Text>
+        </View>
+
         <Pressable
           onPress={() => void onPunch()}
           disabled={punching}
           testID="punch-button"
           accessibilityRole="button"
           accessibilityLabel={punchLabel}
-          style={({ pressed }) => [styles.punchButton, pressed ? styles.pressed : null]}
+          style={({ pressed }) => [styles.punchBtn, pressed ? styles.pressed : null]}
         >
-          <LinearGradient
-            colors={[colors.primary, colors.primaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.punchGradient}
-          >
-            <Ionicons name="finger-print" size={18} color={colors.white} />
-            <Text style={styles.punchButtonText}>
-              {punching ? 'Recording...' : punchLabel}
-            </Text>
-          </LinearGradient>
+          <Ionicons name="finger-print" size={18} color={colors.petrol} />
+          <Text style={styles.punchBtnText}>
+            {punching ? 'Recording...' : punchLabel}
+          </Text>
         </Pressable>
-      </Card>
+      </LinearGradient>
 
-      <View style={styles.statsRow}>
-        <StatCard
-          icon="cube-outline"
-          value={deliveredToday}
-          label="Delivered today"
-          tone="success"
-        />
-        <View style={styles.statSpacer} />
-        <StatCard icon="archive-outline" value={pickedToday} label="Picked today" tone="violet" />
-      </View>
+      <PendingSyncCard pendingCount={pending} syncing={syncing} onSyncNow={() => void onSyncNow()} />
 
       <Segmented<Segment>
         testID="today-segmented"
@@ -316,30 +361,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxxl,
   },
-  greetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-  },
-  greetText: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  greeting: {
-    ...typography.h1,
-  },
-  dateText: {
-    ...typography.caption,
-    color: colors.muted,
-    marginTop: 2,
-  },
-  centerText: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '700',
-    marginTop: 2,
-  },
   liveBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -357,66 +378,206 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: spacing.sm,
   },
-  punchCard: {
-    marginBottom: spacing.lg,
+  hero: {
+    borderRadius: 24,
+    padding: spacing.xl,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+    shadowColor: '#001E2C',
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
-  punchTop: {
+  heroGlowTop: {
+    position: 'absolute',
+    top: -70,
+    right: -50,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  heroGlowBottom: {
+    position: 'absolute',
+    bottom: -80,
+    left: -60,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(44,201,217,0.18)',
+  },
+  heroTop: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
-  punchStatusWrap: {
+  heroGreet: {
     flex: 1,
     marginRight: spacing.md,
   },
-  punchLabel: {
+  greeting: {
+    ...typography.h1,
+    color: colors.white,
+    fontSize: 24,
+    lineHeight: 30,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: spacing.xs,
+  },
+  dateText: {
     ...typography.caption,
-    color: colors.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    color: 'rgba(255,255,255,0.72)',
+  },
+  centerChip: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 2,
+    marginLeft: spacing.sm,
+    maxWidth: 140,
+  },
+  centerChipText: {
+    fontSize: 11,
     fontWeight: '700',
+    color: colors.lime,
   },
-  punchStatus: {
-    ...typography.title,
-    marginTop: 2,
+  onlineChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: spacing.sm,
   },
-  punchTimes: {
-    ...typography.caption,
-    color: colors.muted,
-    marginTop: 2,
+  onlineDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    marginRight: 4,
   },
-  punchDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginTop: spacing.sm,
+  onlineText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.75)',
   },
-  punchButton: {
-    borderRadius: radius.control,
+  statsStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderRadius: radius.card,
+    paddingVertical: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  statCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    height: 34,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  statValue: {
+    fontSize: 26,
+    lineHeight: 30,
+    fontWeight: '800',
+    color: colors.white,
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    color: 'rgba(255,255,255,0.60)',
+    marginTop: 3,
+  },
+  progressBlock: {
+    marginBottom: spacing.lg,
+  },
+  progressHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  progressLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+  },
+  progressPct: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.lime,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     overflow: 'hidden',
   },
-  punchGradient: {
+  progressFill: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.lime,
+  },
+  progressSub: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.55)',
+    marginTop: spacing.sm,
+  },
+  attendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+  },
+  attendLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  attendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: spacing.sm,
+  },
+  attendStatus: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.90)',
+  },
+  attendTimes: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.55)',
+  },
+  punchBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.white,
+    borderRadius: radius.control,
     paddingVertical: spacing.md + 2,
+    shadowColor: '#001E2C',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
   },
-  punchButtonText: {
-    color: colors.white,
+  punchBtnText: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
+    color: colors.petrol,
     marginLeft: spacing.sm,
+    letterSpacing: -0.1,
   },
   pressed: {
-    opacity: 0.85,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    marginBottom: spacing.lg,
-  },
-  statSpacer: {
-    width: spacing.md,
+    opacity: 0.88,
+    transform: [{ scale: 0.99 }],
   },
   listTitle: {
     ...typography.label,
