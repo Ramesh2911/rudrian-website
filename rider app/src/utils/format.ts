@@ -45,6 +45,14 @@ export function formatCod(amount: number): string {
   })}`;
 }
 
+export function formatDuration(ms: number): string {
+  const clamped = Math.max(0, ms);
+  const totalMin = Math.floor(clamped / 60_000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 export function formatWeight(value: number): string {
   return `${value.toFixed(2)} kg`;
 }

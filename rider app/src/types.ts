@@ -38,6 +38,13 @@ export interface UserLocation {
   id: string;
   name: string;
   type: string;
+  city?: string | null;
+  address?: string | null;
+}
+
+export interface VehicleInfo {
+  vehicleType?: string | null;
+  vehicleNumber?: string | null;
 }
 
 export interface User {
@@ -45,7 +52,9 @@ export interface User {
   name: string;
   role: string;
   phone: string;
+  email?: string | null;
   location?: UserLocation | null;
+  profile?: VehicleInfo | null;
 }
 
 export interface AuthSession {

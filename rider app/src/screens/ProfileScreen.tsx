@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,9 +21,18 @@ import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 import { appVersion, colors, gradients, radius, spacing, typography } from '../theme';
 import type { ProfileData } from '../types';
-import { formatTime } from '../utils/format';
+import { formatDuration, formatTime } from '../utils/format';
 
 const SUPPORT_PHONE = 'tel:+18005550199';
+
+const STATUS_CHIP: Record<string, { label: string; fg: string; bg: string }> = {
+  PRESENT: { label: 'Present', fg: colors.success, bg: colors.successBg },
+  LATE: { label: 'Late', fg: colors.warning, bg: colors.warningBg },
+  HALF_DAY: { label: 'Half day', fg: colors.violet, bg: colors.violetBg },
+  ABSENT: { label: 'Absent', fg: colors.danger, bg: colors.dangerBg },
+  LEAVE: { label: 'Leave', fg: colors.muted, bg: colors.border },
+  WEEK_OFF: { label: 'Week off', fg: colors.muted, bg: colors.border },
+};
 
 export function ProfileScreen(): React.JSX.Element {
   const insets = useSafeAreaInsets();
@@ -40,6 +49,7 @@ export function ProfileScreen(): React.JSX.Element {
   const [locationPermission, setLocationPermission] = useState('unknown');
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [tick, setTick] = useState(0);
 
   const load = useCallback(async () => {
     setError(null);
@@ -66,6 +76,25 @@ export function ProfileScreen(): React.JSX.Element {
       void load();
     }, [load]),
   );
+
+  const attendance = profile?.attendanceToday;
+  const onShift = attendance?.action === 'IN';
+
+  useEffect(() => {
+    if (!onShift) return;
+    const id = setInterval(() => setTick((value) => value + 1), 60_000);
+    return () => clearInterval(id);
+  }, [onShift]);
+
+  const workedLabel = useMemo(() => {
+    if (!attendance?.inTime) return '--:--';
+    const start = new Date(attendance.inTime).getTime();
+    if (Number.isNaN(start)) return '--:--';
+    const end = attendance.outTime ? new Date(attendance.outTime).getTime() : Date.now();
+    if (Number.isNaN(end)) return '--:--';
+    return formatDuration(end - start);
+    // tick refreshes the duration every minute while on shift.
+  }, [attendance, onShift, tick]);
 
   const onSyncNow = useCallback(async () => {
     try {
@@ -112,6 +141,13 @@ export function ProfileScreen(): React.JSX.Element {
 
   const displayName = profile?.user?.name ?? user?.name ?? 'Rider';
   const center = profile?.user?.location?.name ?? user?.location?.name ?? 'No center assigned';
+  const role = (profile?.user?.role ?? user?.role ?? 'RIDER').toUpperCase();
+  const phone = profile?.user?.phone ?? user?.phone ?? '';
+  const email = profile?.user?.email ?? '';
+  const vehicle = [profile?.user?.profile?.vehicleType, profile?.user?.profile?.vehicleNumber]
+    .filter(Boolean)
+    .join(' · ');
+  const chip = attendance?.status ? STATUS_CHIP[attendance.status] : undefined;
 
   return (
     <View style={styles.screen}>
@@ -121,11 +157,14 @@ export function ProfileScreen(): React.JSX.Element {
         showsVerticalScrollIndicator={false}
       >
         <LinearGradient
-          colors={gradients.profile}
+          colors={gradients.hero}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
+          <View pointerEvents="none" style={styles.heroGlowTop} />
+          <View pointerEvents="none" style={styles.heroGlowBottom} />
+
           <View style={styles.logoPill}>
             <Image
               source={require('../assets/wordmark.png')}
@@ -134,41 +173,118 @@ export function ProfileScreen(): React.JSX.Element {
               accessibilityLabel="Rudrian Logistics Solutions logo"
             />
           </View>
-          <Avatar name={displayName} size={72} />
+
+          <View style={styles.avatarRing}>
+            <Avatar name={displayName} size={72} />
+          </View>
           <Text style={styles.heroName}>{displayName}</Text>
-          <Text style={styles.heroRole}>{profile?.user?.role ?? user?.role ?? 'Rider'}</Text>
-          <View style={styles.centerPill}>
-            <Ionicons name="storefront-outline" size={14} color={colors.white} />
-            <Text style={styles.centerPillText}>{center}</Text>
+
+          <View style={styles.chipRow}>
+            <View style={styles.roleChip}>
+              <Text style={styles.roleChipText}>{role}</Text>
+            </View>
+            {chip ? (
+              <View style={[styles.attendChip, { backgroundColor: chip.bg }]}>
+                <Text style={[styles.attendChipText, { color: chip.fg }]}>{chip.label}</Text>
+              </View>
+            ) : null}
+            {onShift ? (
+              <View style={styles.onShiftChip}>
+                <View style={styles.onShiftDot} />
+                <Text style={styles.onShiftText}>On shift</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.pillRow}>
+            <View style={styles.pill}>
+              <Ionicons name="storefront-outline" size={13} color={colors.lime} />
+              <Text style={styles.pillText} numberOfLines={1}>
+                {center}
+              </Text>
+            </View>
+            {vehicle ? (
+              <View style={styles.pill}>
+                <Ionicons name="car-sport-outline" size={13} color={colors.lime} />
+                <Text style={styles.pillText} numberOfLines={1}>
+                  {vehicle}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.contactRow}>
+            {phone ? (
+              <Pressable
+                onPress={() => void Linking.openURL(`tel:${phone}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Call ${phone}`}
+                testID="profile-call"
+                style={({ pressed }) => [styles.contactChip, pressed ? styles.pressed : null]}
+              >
+                <Ionicons name="call-outline" size={13} color="rgba(255,255,255,0.9)" />
+                <Text style={styles.contactText} numberOfLines={1}>
+                  {phone}
+                </Text>
+              </Pressable>
+            ) : null}
+            {email ? (
+              <Pressable
+                onPress={() => void Linking.openURL(`mailto:${email}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Email ${email}`}
+                testID="profile-email"
+                style={({ pressed }) => [styles.contactChip, pressed ? styles.pressed : null]}
+              >
+                <Ionicons name="mail-outline" size={13} color="rgba(255,255,255,0.9)" />
+                <Text style={styles.contactText} numberOfLines={1}>
+                  {email}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          <View style={styles.statsStrip}>
+            <View style={styles.statCol}>
+              <Text style={styles.statValue}>{profile?.stats?.deliveredToday ?? 0}</Text>
+              <Text style={styles.statLabel}>DELIVERED</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCol}>
+              <Text style={styles.statValue}>{profile?.stats?.pickedToday ?? 0}</Text>
+              <Text style={styles.statLabel}>PICKED</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCol}>
+              <Text style={styles.statValue}>{profile?.stats?.completedWeek ?? 0}</Text>
+              <Text style={styles.statLabel}>THIS WEEK</Text>
+            </View>
           </View>
         </LinearGradient>
 
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Attendance</Text>
-          <View style={styles.statRow}>
-            <View style={styles.statCell}>
-              <Text style={styles.statLabel}>Today in</Text>
-              <Text style={styles.statValue}>{formatTime(profile?.attendanceToday?.inTime)}</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statCell}>
-              <Text style={styles.statLabel}>Today out</Text>
-              <Text style={styles.statValue}>{formatTime(profile?.attendanceToday?.outTime)}</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statCell}>
-              <Text style={styles.statLabel}>This week</Text>
-              <Text style={styles.statValue}>{profile?.stats?.completedWeek ?? 0}</Text>
-            </View>
+          <View style={styles.cardHeadRow}>
+            <Text style={[styles.cardTitle, styles.cardTitleFlat]}>Attendance</Text>
+            {chip ? (
+              <View style={[styles.attendChip, { backgroundColor: chip.bg }]}>
+                <Text style={[styles.attendChipText, { color: chip.fg }]}>{chip.label}</Text>
+              </View>
+            ) : null}
           </View>
-          <View style={styles.miniStats}>
-            <View style={styles.miniStat}>
-              <Ionicons name="cube-outline" size={14} color={colors.success} />
-              <Text style={styles.miniStatText}>{profile?.stats?.deliveredToday ?? 0} delivered</Text>
+          <View style={styles.timeCard}>
+            <View style={styles.timeCell}>
+              <Text style={styles.timeLabel}>IN</Text>
+              <Text style={styles.timeValue}>{formatTime(attendance?.inTime)}</Text>
             </View>
-            <View style={styles.miniStat}>
-              <Ionicons name="archive-outline" size={14} color={colors.violet} />
-              <Text style={styles.miniStatText}>{profile?.stats?.pickedToday ?? 0} picked</Text>
+            <View style={styles.timeDivider} />
+            <View style={styles.timeCell}>
+              <Text style={styles.timeLabel}>OUT</Text>
+              <Text style={styles.timeValue}>{formatTime(attendance?.outTime)}</Text>
+            </View>
+            <View style={styles.timeDivider} />
+            <View style={styles.timeCell}>
+              <Text style={styles.timeLabel}>WORKED</Text>
+              <Text style={[styles.timeValue, styles.timeValueLime]}>{workedLabel}</Text>
             </View>
           </View>
         </Card>
@@ -292,50 +408,202 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
   },
   hero: {
-    borderRadius: radius.card,
+    borderRadius: 24,
     alignItems: 'center',
-    paddingVertical: spacing.xxl,
+    paddingVertical: spacing.xl,
     paddingHorizontal: spacing.xl,
     marginBottom: spacing.lg,
+    overflow: 'hidden',
+    shadowColor: '#001E2C',
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
+  heroGlowTop: {
+    position: 'absolute',
+    top: -70,
+    right: -50,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  heroGlowBottom: {
+    position: 'absolute',
+    bottom: -90,
+    left: -60,
+    width: 230,
+    height: 230,
+    borderRadius: 115,
+    backgroundColor: 'rgba(44,201,217,0.18)',
   },
   logoPill: {
     backgroundColor: colors.white,
     borderRadius: 14,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.sm,
     marginBottom: spacing.lg,
   },
   logoImage: {
-    width: 156,
-    height: 70,
+    width: 124,
+    height: 56,
+  },
+  avatarRing: {
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.85)',
+    borderRadius: 42,
+    padding: 3,
   },
   heroName: {
     ...typography.h1,
     color: colors.white,
     marginTop: spacing.md,
+    textAlign: 'center',
   },
-  heroRole: {
-    ...typography.label,
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 2,
-  },
-  centerPill: {
+  chipRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    marginTop: spacing.sm,
+  },
+  roleChip: {
+    backgroundColor: colors.lime,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 3,
+    marginRight: spacing.sm,
+  },
+  roleChipText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: colors.petrol,
+  },
+  attendChip: {
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 3,
+    marginRight: spacing.sm,
+  },
+  attendChipText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  onShiftChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 3,
+  },
+  onShiftDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.lime,
+    marginRight: 5,
+  },
+  onShiftText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.white,
+  },
+  pillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
     marginTop: spacing.md,
   },
-  centerPillText: {
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: spacing.xs + 2,
+    margin: 3,
+    maxWidth: 240,
+  },
+  pillText: {
     fontSize: 12,
     fontWeight: '700',
     color: colors.white,
-    marginLeft: spacing.xs,
+    marginLeft: 5,
+    flexShrink: 1,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  contactChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: spacing.xs + 2,
+    margin: 3,
+    maxWidth: 220,
+  },
+  contactText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.90)',
+    marginLeft: 5,
+    flexShrink: 1,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  statsStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderRadius: radius.card,
+    paddingVertical: spacing.lg,
+    alignSelf: 'stretch',
+  },
+  statCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    height: 34,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  statValue: {
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: '800',
+    color: colors.white,
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    color: 'rgba(255,255,255,0.60)',
+    marginTop: 3,
   },
   card: {
     marginBottom: spacing.lg,
+  },
+  cardHeadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
   },
   cardTitle: {
     ...typography.label,
@@ -348,44 +616,38 @@ const styles = StyleSheet.create({
   cardTitleSpaced: {
     marginHorizontal: spacing.lg,
   },
-  statRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  cardTitleFlat: {
+    marginBottom: 0,
   },
-  statCell: {
+  timeCard: {
+    flexDirection: 'row',
+    backgroundColor: colors.primary50,
+    borderRadius: radius.card,
+    paddingVertical: spacing.lg,
+  },
+  timeCell: {
     flex: 1,
     alignItems: 'center',
   },
-  statDivider: {
+  timeDivider: {
     width: 1,
-    height: 32,
     backgroundColor: colors.border,
   },
-  statLabel: {
-    ...typography.caption,
+  timeLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
     color: colors.muted,
   },
-  statValue: {
-    ...typography.title,
-    marginTop: 2,
+  timeValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.ink,
+    marginTop: 4,
+    letterSpacing: -0.3,
   },
-  miniStats: {
-    flexDirection: 'row',
-    marginTop: spacing.lg,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  miniStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: spacing.lg,
-  },
-  miniStatText: {
-    ...typography.caption,
-    color: colors.body,
-    marginLeft: spacing.xs,
-    fontWeight: '600',
+  timeValueLime: {
+    color: colors.petrolSoft,
   },
   syncRow: {
     flexDirection: 'row',
@@ -455,9 +717,6 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: colors.border,
     marginLeft: spacing.lg + 36 + spacing.md,
-  },
-  pressed: {
-    opacity: 0.7,
   },
   logout: {
     marginTop: spacing.sm,

@@ -15,7 +15,7 @@ import { useAuth } from '../state/AuthContext';
 import { useToast } from '../state/ToastContext';
 import { colors, gradients, radius, spacing, typography } from '../theme';
 import type { AttendanceToday, RiderStats } from '../types';
-import { formatTime, todayIsoDate } from '../utils/format';
+import { formatDuration, formatTime, todayIsoDate } from '../utils/format';
 
 const STATUS_CHIP: Record<string, { label: string; fg: string; bg: string }> = {
   PRESENT: { label: 'Present', fg: colors.success, bg: colors.successBg },
@@ -25,14 +25,6 @@ const STATUS_CHIP: Record<string, { label: string; fg: string; bg: string }> = {
   LEAVE: { label: 'Leave', fg: colors.muted, bg: colors.border },
   WEEK_OFF: { label: 'Week off', fg: colors.muted, bg: colors.border },
 };
-
-function formatDuration(ms: number): string {
-  const clamped = Math.max(0, ms);
-  const totalMin = Math.floor(clamped / 60_000);
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
 
 function shortDate(): string {
   return new Date().toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
