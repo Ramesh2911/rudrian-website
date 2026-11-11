@@ -28,3 +28,5 @@ deploy/.env
 # Expo prebuild-generated native dirs (CNG)
 rider app/android/
 rider app/ios/
+
+rider app/*.apk
