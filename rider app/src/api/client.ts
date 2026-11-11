@@ -1,6 +1,6 @@
 import { clearSession, getAccessToken, getRefreshToken, saveTokens } from '../storage/auth';
 
-const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:4000/api/v1').replace(/\/+$/, '');
+const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? (__DEV__ ? 'http://10.0.2.2:4000/api/v1' : 'https://rudrianlogistics.com/api/v1')).replace(/\/+$/, '');
 
 export class ApiError extends Error {
   readonly status: number;

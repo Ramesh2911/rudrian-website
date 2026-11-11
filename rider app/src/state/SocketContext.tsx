@@ -15,7 +15,7 @@ interface SocketContextValue {
   clearTaskEvent: () => void;
 }
 
-const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL;
+const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL ?? (__DEV__ ? '' : 'https://rudrianlogistics.com');
 
 const SocketContext = createContext<SocketContextValue>({
   connected: false,

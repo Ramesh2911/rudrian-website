@@ -8,6 +8,7 @@ coverage/
 *.log
 npm-debug.log*
 .env
+!rider app/.env
 .env.local
 .env.production
 server/uploads/*
