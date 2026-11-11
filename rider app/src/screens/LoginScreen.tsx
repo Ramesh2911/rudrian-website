@@ -167,7 +167,7 @@ export function LoginScreen(_props: Props): React.JSX.Element {
             ) : null}
 
             {signedInCenter ? (
-              <View style={styles.centerRow} accessibilityRole="status">
+              <View style={styles.centerRow} accessibilityLiveRegion="polite">
                 <Ionicons name="checkmark-circle" size={16} color={colors.success} />
                 <Text style={styles.centerText} numberOfLines={1}>
                   Signed in to {signedInCenter}
